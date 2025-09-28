@@ -1,0 +1,769 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Vanderbilt First-Year Survey — The Hustler</title>
+
+  <!-- Bootstrap for layout & basic styles -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <!-- Vega / Vega-Lite (for elegant charts) -->
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+
+  <!-- D3 for data munging + cloud layout -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-cloud/1.2.5/d3.layout.cloud.min.js"></script>
+
+  <style>
+    body { background:#f8fafc; color:#111827; }
+    .hero { background: linear-gradient(90deg,#0ea5a5, #06b6d4); color:white; padding:1rem; border-radius:.5rem; margin-bottom:1rem;}
+    .card { box-shadow: 0 6px 18px rgba(12, 17, 43, .06); }
+    .viz { min-height: 260px; padding:12px; }
+    #wordcloud { width:100%; height:320px; }
+    .small-note { font-size:.85rem; color:#6b7280; }
+    .section-title { font-weight:700; margin-bottom:.5rem; }
+    .embed-vl { width:100%; min-height:260px; }
+    .tag { display:inline-block; margin:.15rem; padding:.25rem .5rem; border-radius:.5rem; background:#eef2ff; color:#3730a3; font-size:.85rem; }
+  </style>
+</head>
+<body>
+  <div class="container py-4">
+    <div class="hero d-flex align-items-center justify-content-between">
+      <div>
+        <h2 class="mb-0">The Hustler — First-Year Survey Dashboard</h2>
+        <div class="small-note">Interactive visualizations of the Microsoft Forms responses (CSV). Drop your `responses.csv` in <code>data/responses.csv</code>.</div>
+      </div>
+      <div><small class="small-note">Built with D3 & Vega-Lite</small></div>
+    </div>
+
+    <!-- Controls -->
+    <div class="mb-3 d-flex gap-2 align-items-center">
+      <label class="small-note mb-0">Rows to sample (for performance):</label>
+      <input id="sampleSize" type="number" class="form-control form-control-sm" style="width:100px" value="0" />
+      <button id="reloadBtn" class="btn btn-sm btn-primary">Reload</button>
+      <div class="ms-auto small-note">If the CSV's column names don't match, edit the column mapping in the script.</div>
+    </div>
+
+    <!-- Grid of visualizations -->
+    <div class="row g-3">
+      <!-- Prologue -->
+      <div class="col-12">
+        <div class="card p-3">
+          <div class="d-flex align-items-center">
+            <div>
+              <div class="section-title">Section 1 — Prologue</div>
+              <div class="small-note">Word cloud of the 1–2 words students hope will describe their Vanderbilt experience.</div>
+            </div>
+          </div>
+
+          <div class="row mt-3">
+            <div class="col-md-6">
+              <div id="wordcloud" class="viz card-body"></div>
+            </div>
+            <div class="col-md-6">
+              <div id="prologue-stats" class="viz card-body">
+                <h6>Class of 2029 membership</h6>
+                <div id="classOf2029Chart" class="embed-vl"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Demographics -->
+      <div class="col-12">
+        <div class="card p-3">
+          <div class="section-title">Section 2 — Demographics</div>
+          <div class="small-note">Home state, race/ethnicity (multi-select), gender, religion, school type, income, first-gen, legacy & expected loans.</div>
+
+          <div class="row mt-3 g-3">
+            <div class="col-md-4">
+              <div class="card-body viz" id="homeStateChart"></div>
+            </div>
+            <div class="col-md-4">
+              <div class="card-body viz" id="raceChart"></div>
+            </div>
+            <div class="col-md-4">
+              <div class="card-body viz" id="genderDonut"></div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="card-body viz" id="incomeHist"></div>
+            </div>
+            <div class="col-md-4">
+              <div class="card-body viz" id="firstGenDonut"></div>
+            </div>
+            <div class="col-md-4">
+              <div class="card-body viz" id="loanHist"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- College Process -->
+      <div class="col-12">
+        <div class="card p-3">
+          <div class="section-title">Section 3 — College Process</div>
+          <div class="small-note">Extracurriculars (tag cloud), paid admissions assistance, numbers applied/accepted, ranking of Vanderbilt, test scores & course counts (AP/IB/etc.).</div>
+
+          <div class="row mt-3 g-3">
+            <div class="col-md-6">
+              <div class="card-body viz" id="extracurricularTags"></div>
+            </div>
+            <div class="col-md-6">
+              <div class="card-body viz" id="apCountChart"></div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="card-body viz" id="appliedCount"></div>
+            </div>
+            <div class="col-md-4">
+              <div class="card-body viz" id="acceptedToList"></div>
+            </div>
+            <div class="col-md-4">
+              <div class="card-body viz" id="rankVandy"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- College life -->
+      <div class="col-12">
+        <div class="card p-3">
+          <div class="section-title">Section 4 — College life</div>
+          <div class="small-note">Majors, pre-professional tracks, financial aid & merit, AI use, Greek life plans, satisfaction (Likert).</div>
+
+          <div class="row mt-3 g-3">
+            <div class="col-md-6">
+              <div class="card-body viz" id="majorsCloud"></div>
+            </div>
+            <div class="col-md-6">
+              <div class="card-body viz" id="preProfChart"></div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="card-body viz" id="aidChart"></div>
+            </div>
+            <div class="col-md-4">
+              <div class="card-body viz" id="aiUseDonut"></div>
+            </div>
+            <div class="col-md-4">
+              <div class="card-body viz" id="greekPlan"></div>
+            </div>
+
+            <div class="col-12">
+              <div id="likertGrid" class="card-body viz"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Behavioral -->
+      <div class="col-12">
+        <div class="card p-3">
+          <div class="section-title">Section 5 — Behavioral</div>
+          <div class="small-note">Substance use frequency & lifetime trial of listed drugs, phone use, sex frequency, relationships, fake ID ownership.</div>
+          <div class="row mt-3 g-3">
+            <div class="col-md-6"><div id="substanceFreq" class="card-body viz"></div></div>
+            <div class="col-md-6"><div id="drugTryHeatmap" class="card-body viz"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Policy & Politics -->
+      <div class="col-12">
+        <div class="card p-3">
+          <div class="section-title">Sections 6 & 7 — Policy & Politics</div>
+          <div class="small-note">Policy opinion bars and political ideology/optimism distributions.</div>
+          <div class="row mt-3 g-3">
+            <div class="col-md-6"><div id="policyCharts" class="card-body viz"></div></div>
+            <div class="col-md-6"><div id="politicsCharts" class="card-body viz"></div></div>
+          </div>
+        </div>
+      </div>
+
+    </div> <!-- row -->
+  </div> <!-- container -->
+
+<script>
+(async function(){
+
+  // ========== CONFIG: map your CSV column names here ==========
+  // Edit these if your Forms CSV uses different headings.
+  const COL = {
+    classOf2029: "Are you a member of the class of 2029?",
+    prologueWords: "What are 1-2 words that you hope will describe your Vanderbilt experience? Please separate with commas.",
+    homeState: "What is your home state?",
+    race: "What is your race and/or ethnicity? Select all that apply.",
+    sexualOrientation: "What is your sexual orientation?",
+    gender: "What is your gender?",
+    religion: "What is your present religious affiliation, if any?",
+    highSchoolType: "What type of secondary/high school did you attend?",
+    householdIncome: "Approximately what is your annual household income?",
+    firstGen: "Are you a first-generation college student?",
+    familyVandy: "Has a family member attended Vanderbilt in the past?",
+    loans: "Approximately how much will you owe in student loans post-grad?",
+    extracurriculars: "What extracurriculars did you participate in in HS?",
+    paidAssistance: "Did you pay for admissions assistance in your college application process? (include test tutoring)",
+    numApplied: "How many colleges and universities did you apply to (including Vanderbilt)?",
+    acceptedTo: "If you applied to other universities, what other universities were you accepted to? Please separate each university name with a comma.",
+    vandyRank: "Where did Vanderbilt fall in your ranking of all the schools you applied to?",
+    appliedCycle: "Which admissions cycle did you apply to & get admitted in?",
+    vandyCollege: "Which Vanderbilt college did you apply to?",
+    submittedScores: "Did you submit test scores?",
+    sat: "SAT score?",
+    act: "ACT score?",
+    enrolledHSCourses: "Did you enroll in IB/AP/Honors/Dual enrollment courses in high school?",
+    numIB: "How many IB",
+    numAP: "How many AP",
+    numHonors: "How many Honors",
+    numDual: "How many Dual Enrollment",
+    planSwitch: "Do you plan on switching colleges? If so, where to?",
+    major: "What major are you most interested in declaring?",
+    preProf: "Are you pre-professional if so what track?",
+    receivingAid: "Are you receiving financial aid?",
+    receivingMerit: "Are you receiving merit scholarship?",
+    usedAI: "Have you ever used AI for academic work (in high school or college)?",
+    recruitedAthlete: "Are you a recruited athlete?",
+    rotc: "Are you an ROTC student?",
+    greekPlan: "Do you plan on participating in Greek-life?",
+    likertAcademics: "Academics",
+    likertSocial: "Social Life",
+    likertResources: "Resources",
+    alcoholFreq: "How often do you consume alcohol?",
+    nicotineFreq: "How often do you consume nicotine products?",
+    marijuanaFreq: "How often do you consume marijuana?",
+    drugsTried: "Which of the following drugs have you tried?",
+    fakeID: "Have you ever owned a fake ID?",
+    numRelationships: "How many exclusive romantic relationships have you had before college?",
+    sexFreq: "How often do you have sex?",
+    phoneHours: "How many hours a day do you use your phone?",
+    policy_principled_neutrality: "Vanderbilt should continue to adhere to its policy of “principled neutrality”",
+    policy_divest_fossil: "Vanderbilt should divest from fossil fuels",
+    policy_divest_bds: "Vanderbilt should divest from the Boycott, Divestment and Sanctions (BDS) movement’s consumer and organic boycott targets.",
+    policy_abolish_greek: "Vanderbilt should abolish Greek Life",
+    policy_legacy: "Legacy status should not influence college admissions",
+    policy_affirm_action: "Racial based affirmative action should not influence college admissions",
+    policy_satellite_expansion: "Vanderbilt expansion to satellite campuses enhances the university’s reputation",
+    political_ideology: "How would you describe your political ideology right now?",
+    support_gun_law: "I support stricter laws regulating the sale and ownership of firearms in the United States.",
+    support_nuclear: "I support the use of nuclear energy as a source of power in the United States.",
+    support_israel: "The United States should actively support Israel in the ongoing Israeli-Palestinian conflict.",
+    support_ukraine: "The United States should continue to provide military and financial support to Ukraine in its conflict with Russia.",
+    support_china: "The United States should take a stronger stance against China in matters of trade, security and foreign policy.",
+    support_ice_deport: "Immigration and Customs Enforcement (ICE) should increase deportations of individuals who are in the United States illegally.",
+    optimism_us: "I am feeling _____ about the future of the United States (optimistic/pessimistic scale)",
+    optimism_world: "I am feeling _____ about the future of the world (optimistic/pessimistic scale)"
+  };
+  // ============================================================
+
+  // Helper: safe column read
+  function c(row, name){
+    return (row[name] !== undefined) ? String(row[name]).trim() : "";
+  }
+
+  async function loadCsv(){
+    // sampleSize control
+    const sampleSize = +document.getElementById("sampleSize").value || 0;
+    let data = await d3.csv("data/responses.csv");
+    if (sampleSize > 0 && sampleSize < data.length) {
+      data = d3.shuffle(data).slice(0, sampleSize);
+    }
+    return data.map(d => {
+      // normalize keys we care about
+      return {
+        classOf2029: c(d,COL.classOf2029),
+        prologueWords: c(d,COL.prologueWords),
+        homeState: c(d,COL.homeState),
+        race: c(d,COL.race),
+        gender: c(d,COL.gender),
+        householdIncome: c(d,COL.householdIncome),
+        firstGen: c(d,COL.firstGen),
+        familyVandy: c(d,COL.familyVandy),
+        loans: c(d,COL.loans),
+        extracurriculars: c(d,COL.extracurriculars),
+        acceptedTo: c(d,COL.acceptedTo),
+        numApplied: +c(d,COL.numApplied) || null,
+        vandyRank: c(d,COL.vandyRank),
+        numAP: +c(d,COL.numAP) || 0,
+        likertAcademics: c(d,COL.likertAcademics),
+        likertSocial: c(d,COL.likertSocial),
+        likertResources: c(d,COL.likertResources),
+        alcoholFreq: c(d,COL.alcoholFreq),
+        nicotineFreq: c(d,COL.nicotineFreq),
+        marijuanaFreq: c(d,COL.marijuanaFreq),
+        drugsTried: c(d,COL.drugsTried),
+        major: c(d,COL.major),
+        preProf: c(d,COL.preProf),
+        receivingAid: c(d,COL.receivingAid),
+        receivingMerit: c(d,COL.receivingMerit),
+        usedAI: c(d,COL.usedAI),
+        greekPlan: c(d,COL.greekPlan),
+        political_ideology: c(d,COL.political_ideology),
+        optimism_us: c(d,COL.optimism_us),
+        optimism_world: c(d,COL.optimism_world),
+        // raw for other use
+        raw: d
+      };
+    });
+  }
+
+  // Basic utilities
+  function splitAndTrim(s, sep=","){
+    if(!s) return [];
+    return s.split(sep).map(x=>x.trim()).filter(x=>x.length>0);
+  }
+  function topCounts(array, accessor, topN=10){
+    const counts = d3.rollup(array, v=>v.length, accessor);
+    const arr = Array.from(counts, ([k,v])=>({k,v})).sort((a,b)=>b.v-a.v);
+    return arr.slice(0, topN);
+  }
+
+  // Draw word cloud using d3-cloud
+  function drawWordCloud(words, selector){
+    const el = document.querySelector(selector);
+    el.innerHTML = "";
+    const width = el.clientWidth || 600;
+    const height = 320;
+    const svg = d3.select(selector).append("svg").attr("width",width).attr("height",height);
+    const layout = d3.layout.cloud()
+      .size([width, height])
+      .words(words.map(d=>({text:d.text, size: 12 + d.count*3})))
+      .padding(4)
+      .rotate(()=> (Math.random() > 0.85 ? 90 : 0))
+      .font("Impact")
+      .fontSize(d=>d.size)
+      .on("end", draw);
+    layout.start();
+
+    function draw(words){
+      svg.append("g")
+        .attr("transform", `translate(${width/2},${height/2})`)
+        .selectAll("text")
+        .data(words)
+        .enter().append("text")
+        .style("font-family","Impact")
+        .style("font-size", d=>d.size + "px")
+        .style("fill", (d,i)=> d3.interpolateWarm(i/30))
+        .attr("text-anchor","middle")
+        .attr("transform", d=>`translate(${d.x},${d.y})rotate(${d.rotate})`)
+        .text(d=>d.text)
+        .append("title")
+        .text(d=>`${d.text} — ${d.count || ""}`);
+    }
+  }
+
+  // Uses vega-embed to render a Vega-Lite spec into a DOM element
+  async function renderVegaLite(spec, el){
+    try {
+      await vegaEmbed(el, spec, {actions:false, renderer:"canvas"});
+    } catch(e){
+      console.error("Vega render failed:", e);
+      el.innerHTML = "<div class='small-note'>Chart failed to render.</div>";
+    }
+  }
+
+  // Main render
+  async function renderAll(){
+    const rows = await loadCsv();
+
+    // ---- PROLOGUE ----
+    // word cloud from "prologueWords" (comma separated list of 1-2 words)
+    const allWords = [];
+    rows.forEach(r=>{
+      const words = splitAndTrim(r.prologueWords, ",");
+      words.forEach(w => {
+        if (w.length>0) allWords.push(w.toLowerCase());
+      });
+    });
+    const wordCounts = Array.from(d3.rollup(allWords, v=>v.length, d=>d))
+                            .map(([text,count])=>({text, count}))
+                            .sort((a,b)=>b.count-a.count)
+                            .slice(0,150);
+    drawWordCloud(wordCounts, "#wordcloud");
+
+    // class of 2029 chart
+    const classCounts = d3.rollup(rows, v=>v.length, r=>r.classOf2029 || "No response");
+    const classArr = Array.from(classCounts, ([k,v])=>({label:k, value:v}));
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data": {"values": classArr},
+      "mark":"bar",
+      "encoding": {
+        "x":{"field":"label","type":"nominal","axis":{"labelAngle":0}},
+        "y":{"field":"value","type":"quantitative"},
+        "tooltip":[{"field":"label"},{"field":"value"}]
+      },
+      "width":"container","height":140
+    }, "#classOf2029Chart");
+
+    // ---- DEMOGRAPHICS: home state top bar chart ----
+    const stateCounts = topCounts(rows, d=>d.homeState || "Unknown", 12);
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data": {"values": stateCounts.map(d=>({state:d.k, count:d.v}))},
+      "mark":"bar",
+      "encoding":{
+        "y": {"field":"state","type":"ordinal","sort":"-x"},
+        "x": {"field":"count","type":"quantitative"},
+        "tooltip":[{"field":"state"},{"field":"count"}]
+      },
+      "width":"container","height":300
+    }, "#homeStateChart");
+
+    // ---- DEMOGRAPHICS: race (multi-select stacked percent) ----
+    // produce tallies for each selected race
+    const raceAll = [];
+    rows.forEach(r=>{
+      splitAndTrim(r.race, ",").forEach(x=>raceAll.push(x || "No response"));
+    });
+    const raceCounts = Array.from(d3.rollup(raceAll, v=>v.length, d=>d))
+                            .map(([k,v])=>({race:k, count:v}))
+                            .sort((a,b)=>b.count-a.count);
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data":{"values": raceCounts},
+      "mark":"bar",
+      "encoding":{
+        "x":{"field":"count","type":"quantitative"},
+        "y":{"field":"race","type":"nominal","sort":"-x"},
+        "tooltip":[{"field":"race"},{"field":"count"}]
+      },
+      "width":"container","height":300
+    }, "#raceChart");
+
+    // ---- GENDER donut ----
+    const genderCounts = topCounts(rows, d=>d.gender || "No response", 10)
+                        .map(d=>({label:d.k, value:d.v}));
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data":{"values": genderCounts},
+      "mark":{"type":"arc","innerRadius":40},
+      "encoding":{
+        "theta":{"field":"value","type":"quantitative"},
+        "color":{"field":"label","type":"nominal"},
+        "tooltip":[{"field":"label"},{"field":"value"}]
+      },
+      "width":260,"height":260
+    }, "#genderDonut");
+
+    // ---- Income histogram (best-effort parsing numeric ranges) ----
+    function parseMoney(s){
+      if(!s) return null;
+      // remove commas, $; extract first number
+      const m = s.replace(/\$/g,"").replace(/,/g,"").match(/-?\d+/);
+      return m ? +m[0] : null;
+    }
+    const incomes = rows.map(r=>parseMoney(r.householdIncome)).filter(x=>x!=null);
+    const incomeVals = incomes.map(v=>({income:v}));
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data":{"values": incomeVals},
+      "mark":"bar",
+      "encoding":{
+        "x":{"field":"income","type":"quantitative","bin":{"maxbins":12}, "title":"Household income (approx)"},
+        "y":{"aggregate":"count","title":"Respondents"}
+      },
+      "width":"container","height":220
+    }, "#incomeHist");
+
+    // ---- First gen donut ----
+    const firstCounts = topCounts(rows, d=>d.firstGen || "No response", 10)
+                        .map(d=>({label:d.k, value:d.v}));
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data":{"values": firstCounts},
+      "mark":{"type":"arc","innerRadius":30},
+      "encoding":{
+        "theta":{"field":"value","type":"quantitative"},
+        "color":{"field":"label","type":"nominal"},
+        "tooltip":[{"field":"label"},{"field":"value"}]
+      },
+      "width":220,"height":220
+    }, "#firstGenDonut");
+
+    // ---- Loans histogram ----
+    const loansVals = rows.map(r=>parseMoney(r.loans)).filter(x=>x!=null).map(v=>({loans:v}));
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data":{"values": loansVals},
+      "mark":"bar",
+      "encoding":{
+        "x":{"field":"loans","type":"quantitative","bin":{"maxbins":12}, "title":"Expected loans (approx $)"},
+        "y":{"aggregate":"count","title":"Respondents"}
+      },
+      "width":"container","height":220
+    }, "#loanHist");
+
+    // ---- College Process: extracurricular tag cloud (simple tags) ----
+    const extraAll = [];
+    rows.forEach(r=>{
+      splitAndTrim(r.extracurriculars, ",").forEach(x=>{
+        if (x) extraAll.push(x.toLowerCase());
+      });
+    });
+    const extraCounts = Array.from(d3.rollup(extraAll, v=>v.length, d=>d))
+      .map(([k,v])=>({text:k, count:v}))
+      .sort((a,b)=>b.count-a.count)
+      .slice(0,150);
+    // place as inline tags
+    const tagBox = d3.select("#extracurricularTags").html("");
+    if (extraCounts.length === 0) {
+      tagBox.append("div").text("No extracurriculars recorded.");
+    } else {
+      tagBox.append("div").selectAll("span.tag")
+        .data(extraCounts.slice(0,40))
+        .enter().append("span")
+        .attr("class","tag")
+        .text(d=>`${d.text} (${d.count})`);
+    }
+
+    // ---- AP Count chart (distribution) ----
+    const apVals = rows.map(r=>({ap: r.numAP || 0}));
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data":{"values": apVals},
+      "mark":"bar",
+      "encoding":{
+        "x":{"field":"ap","type":"ordinal","title":"Reported # AP courses"},
+        "y":{"aggregate":"count"}
+      },
+      "width":"container","height":200
+    }, "#apCountChart");
+
+    // ---- How many applied: distribution ----
+    const appliedVals = rows.map(r=>({applied: r.numApplied || 0}));
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data":{"values": appliedVals},
+      "mark":"bar",
+      "encoding":{
+        "x":{"field":"applied","type":"ordinal","title":"# Applied (incl. Vandy)"},
+        "y":{"aggregate":"count"}
+      },
+      "width":"container","height":200
+    }, "#appliedCount");
+
+    // ---- Accepted-to list: extract top universities mentioned ----
+    const acceptedAll = [];
+    rows.forEach(r=>{
+      splitAndTrim(r.acceptedTo, ",").forEach(x => acceptedAll.push(x));
+    });
+    const acceptedTop = Array.from(d3.rollup(acceptedAll, v=>v.length, d=>d))
+                              .map(([k,v])=>({school:k, count:v}))
+                              .sort((a,b)=>b.count-a.count)
+                              .slice(0,60);
+    const acceptedEl = d3.select("#acceptedToList").html("");
+    if (acceptedTop.length === 0) acceptedEl.append("div").text("No other universities recorded.");
+    else {
+      acceptedEl.append("h6").text("Top accepted schools");
+      const grid = acceptedEl.append("div");
+      acceptedTop.forEach(s => {
+        grid.append("span").attr("class","tag").text(`${s.school} (${s.count})`);
+      });
+    }
+
+    // ---- Vanderbilt rank histogram ----
+    const rankVals = rows.map(r=>({rank: r.vandyRank || "No response"}));
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data":{"values": rankVals},
+      "mark":"bar",
+      "encoding":{
+        "x":{"field":"rank","type":"nominal","sort":"-y"},
+        "y":{"aggregate":"count"},
+        "tooltip":[{"field":"rank"},{"aggregate":"count"}]
+      },
+      "width":"container","height":220
+    }, "#rankVandy");
+
+    // ---- Majors tag cloud ----
+    const majorsAll = [];
+    rows.forEach(r=> splitAndTrim(r.major, ",").forEach(x=> majorsAll.push(x.toLowerCase())));
+    const majorCounts = Array.from(d3.rollup(majorsAll, v=>v.length, d=>d))
+      .map(([k,v])=>({text:k, count:v})).sort((a,b)=>b.count-a.count);
+    drawWordCloud(majorCounts.slice(0,120), "#majorsCloud");
+
+    // ---- Pre-professional tracks (bar) ----
+    const preCounts = topCounts(rows, d=>d.preProf || "None", 20).map(d=>({track:d.k, count:d.v}));
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data":{"values": preCounts},
+      "mark":"bar",
+      "encoding":{
+        "x":{"field":"count","type":"quantitative"},
+        "y":{"field":"track","type":"nominal","sort":"-x"},
+        "tooltip":[{"field":"track"},{"field":"count"}]
+      },
+      "width":"container","height":260
+    }, "#preProfChart");
+
+    // ---- Aid / Merit charts ----
+    const aidCounts = topCounts(rows, d=>d.receivingAid || "No response", 10).map(d=>({label:d.k, value:d.v}));
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data":{"values": aidCounts},
+      "mark":"bar",
+      "encoding":{
+        "x":{"field":"label","type":"nominal","axis":{"labelAngle":0}},
+        "y":{"field":"value","type":"quantitative"},
+        "tooltip":[{"field":"label"},{"field":"value"}]
+      },
+      "width":"container","height":160
+    }, "#aidChart");
+
+    // ---- AI use donut ----
+    const aiCounts = topCounts(rows, d=>d.usedAI || "No response", 10).map(d=>({label:d.k, value:d.v}));
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data":{"values": aiCounts},
+      "mark":{"type":"arc","innerRadius":30},
+      "encoding":{
+        "theta":{"field":"value","type":"quantitative"},
+        "color":{"field":"label","type":"nominal"},
+        "tooltip":[{"field":"label"},{"field":"value"}]
+      },
+      "width":220,"height":220
+    }, "#aiUseDonut");
+
+    // ---- Greek plan ----
+    const greekCounts = topCounts(rows, d=>d.greekPlan || "No response", 10).map(d=>({label:d.k, value:d.v}));
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data":{"values": greekCounts},
+      "mark":"bar",
+      "encoding":{
+        "x":{"field":"label","type":"nominal","axis":{"labelAngle":-30}},
+        "y":{"field":"value","type":"quantitative"},
+        "tooltip":[{"field":"label"},{"field":"value"}]
+      },
+      "width":"container","height":160
+    }, "#greekPlan");
+
+    // ---- Likert small-multiples: Academics / Social / Resources ----
+    const likertCategories = ["likertAcademics","likertSocial","likertResources"];
+    const likertData = [];
+    rows.forEach(r => {
+      if (r.likertAcademics) likertData.push({item:"Academics", value:r.likertAcademics});
+      if (r.likertSocial) likertData.push({item:"Social Life", value:r.likertSocial});
+      if (r.likertResources) likertData.push({item:"Resources", value:r.likertResources});
+    });
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data":{"values": likertData},
+      "mark":"bar",
+      "encoding":{
+        "x":{"field":"value","type":"ordinal"},
+        "y":{"aggregate":"count"},
+        "column":{"field":"item","type":"nominal"},
+        "color":{"field":"value","type":"ordinal"}
+      },
+      "width":220,"height":160
+    }, "#likertGrid");
+
+    // ---- Behavioral: substance frequency (small multiples) ----
+    const freqData = [];
+    rows.forEach(r=>{
+      if (r.alcoholFreq) freqData.push({substance:"Alcohol", freq:r.alcoholFreq});
+      if (r.nicotineFreq) freqData.push({substance:"Nicotine", freq:r.nicotineFreq});
+      if (r.marijuanaFreq) freqData.push({substance:"Marijuana", freq:r.marijuanaFreq});
+    });
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data":{"values": freqData},
+      "mark":"bar",
+      "encoding":{
+        "x":{"field":"freq","type":"ordinal"},
+        "y":{"aggregate":"count"},
+        "column":{"field":"substance","type":"nominal"},
+        "color":{"field":"freq","type":"ordinal"}
+      },
+      "width":220,"height":160
+    }, "#substanceFreq");
+
+    // ---- Drugs tried heatmap (binary presence per drug) ----
+    // We'll look for common keywords in drugsTried column
+    const drugs = ["Cocaine","LSD","MDMA","Ketamine","Inhalants","Shrooms","Adderall","Meth","Heroin","Opioids"];
+    const drugCounts = drugs.map(name=>{
+      const key = name.toLowerCase();
+      const count = rows.reduce((acc,r)=>{
+        const t = (r.drugsTried || "").toLowerCase();
+        return acc + (t.includes(key.toLowerCase()) ? 1 : 0);
+      },0);
+      return {drug:name, count};
+    });
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data":{"values": drugCounts},
+      "mark":"bar",
+      "encoding":{
+        "y":{"field":"drug","type":"ordinal","sort":"-x"},
+        "x":{"field":"count","type":"quantitative"},
+        "tooltip":[{"field":"drug"},{"field":"count"}]
+      },
+      "width":"container","height":280
+    }, "#drugTryHeatmap");
+
+    // ---- Policies: each opinion distribution (compact) ----
+    const policyKeys = [
+      {key:COL.policy_principled_neutrality, id:"principled"},
+      {key:COL.policy_divest_fossil, id:"fossil"},
+      {key:COL.policy_divest_bds, id:"bds"},
+      {key:COL.policy_abolish_greek, id:"abolish_greek"},
+      {key:COL.policy_legacy, id:"legacy"},
+      {key:COL.policy_affirm_action, id:"affirm_action"},
+      {key:COL.policy_satellite_expansion, id:"satellite"}
+    ];
+
+    const policyValues = [];
+    // for each policy, compute counts
+    policyKeys.forEach(p=>{
+      const counts = d3.rollup(rows, v=>v.length, r=>c(r.raw,p.key) || "No response");
+      Array.from(counts).forEach(([label,count])=>{
+        policyValues.push({policy:p.id, text:label, value:count});
+      });
+    });
+
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data":{"values": policyValues},
+      "mark":"bar",
+      "encoding":{
+        "y":{"field":"policy","type":"nominal"},
+        "x":{"aggregate":"sum","field":"value"},
+        "color":{"field":"text","type":"nominal"},
+        "tooltip":[{"field":"policy"},{"field":"text"},{"field":"value"}]
+      },
+      "width":"container","height":320
+    }, "#policyCharts");
+
+    // ---- Politics: ideology & optimism distributions ----
+    const ideologyCounts = topCounts(rows, d=>d.political_ideology || "No response", 20).map(d=>({label:d.k, value:d.v}));
+    await renderVegaLite({
+      "$schema":"https://vega.github.io/schema/vega-lite/v5.json",
+      "data":{"values": ideologyCounts},
+      "mark":"bar",
+      "encoding":{
+        "x":{"field":"label","type":"nominal","axis":{"labelAngle":-35}},
+        "y":{"field":"value","type":"quantitative"},
+        "tooltip":[{"field":"label"},{"field":"value"}]
+      },
+      "width":"container","height":240
+    }, "#politicsCharts");
+
+    // DONE
+  } // renderAll
+
+  // initial render
+  await renderAll();
+
+  document.getElementById("reloadBtn").addEventListener("click", renderAll);
+
+})(); // IIFE
+</script>
+
+</body>
+</html>
