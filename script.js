@@ -1,61 +1,53 @@
-// Load survey responses
-Plotly.d3.csv("responses.csv", function(err, rows) {
-    if (err) {
-        console.error("Error loading CSV:", err);
-        return;
-    }
+// Load CSV from the "data" folder
+Plotly.d3.csv("data/responses.csv", function(err, rows) {
+  if (err) {
+    console.error("Error loading CSV:", err);
+    return;
+  }
 
-    // --- Extract data ---
-    let states = rows.map(r => r["What is your home state?"]);
-    let gender = rows.map(r => r["What is your gender?"]);
-    let race = rows.map(r => r["What is your race and/or ethnicity? Select all that apply."]);
+  // Grab the headers (question names)
+  let headers = Object.keys(rows[0]);
+  console.log("Headers found:", headers);
 
-    // --- Chart 1: Home States ---
-    let traceStates = {
-        type: "histogram",
-        x: states,
-        marker: { color: "navy" }
+  // Example: take the first 3 questions (you can adjust later)
+  let q1 = headers[1]; // skip timestamp
+  let q2 = headers[2];
+  let q3 = headers[3];
+
+  // Helper: count answers
+  function countAnswers(question) {
+    let counts = {};
+    rows.forEach(r => {
+      let ans = r[question];
+      if (ans) counts[ans] = (counts[ans] || 0) + 1;
+    });
+    return {
+      labels: Object.keys(counts),
+      values: Object.values(counts)
     };
-    Plotly.newPlot("chart-state", [traceStates], {
-        title: "Home States of Vanderbilt Class of 2029",
-        xaxis: { title: "State" },
-        yaxis: { title: "Number of Students" }
-    });
+  }
 
-    // --- Chart 2: Gender Pie Chart ---
-    let genderCounts = {};
-    gender.forEach(g => {
-        if (g) genderCounts[g] = (genderCounts[g] || 0) + 1;
-    });
-    let traceGender = {
-        type: "pie",
-        labels: Object.keys(genderCounts),
-        values: Object.values(genderCounts),
-        hole: 0.3
-    };
-    Plotly.newPlot("chart-gender", [traceGender], {
-        title: "Gender Breakdown"
-    });
+  // Chart 1
+  let data1 = countAnswers(q1);
+  Plotly.newPlot('chart1', [{
+    type: "bar",
+    x: data1.labels,
+    y: data1.values
+  }], {title: q1});
 
-    // --- Chart 3: Race/Ethnicity Bar Chart ---
-    let raceCounts = {};
-    race.forEach(r => {
-        if (r) {
-            r.split(",").forEach(item => {
-                let cleaned = item.trim();
-                if (cleaned) raceCounts[cleaned] = (raceCounts[cleaned] || 0) + 1;
-            });
-        }
-    });
-    let traceRace = {
-        type: "bar",
-        x: Object.keys(raceCounts),
-        y: Object.values(raceCounts),
-        marker: { color: "darkred" }
-    };
-    Plotly.newPlot("chart-race", [traceRace], {
-        title: "Race/Ethnicity Breakdown",
-        xaxis: { title: "Race/Ethnicity" },
-        yaxis: { title: "Number of Students" }
-    });
+  // Chart 2
+  let data2 = countAnswers(q2);
+  Plotly.newPlot('chart2', [{
+    type: "pie",
+    labels: data2.labels,
+    values: data2.values
+  }], {title: q2});
+
+  // Chart 3
+  let data3 = countAnswers(q3);
+  Plotly.newPlot('chart3', [{
+    type: "bar",
+    x: data3.labels,
+    y: data3.values
+  }], {title: q3});
 });
