@@ -1,0 +1,23 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 30px;
+  background: #fdfdfd;
+  color: #333;
+}
+
+h1 {
+  color: #002147;
+  text-align: center;
+}
+
+p {
+  font-size: 1.1em;
+  text-align: center;
+}
+
+.chart {
+  width: 100%;
+  max-width: 900px;
+  height: 500px;
+  margin: 40px auto;
+}
